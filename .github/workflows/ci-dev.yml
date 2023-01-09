@@ -1,0 +1,106 @@
+name: CI - develop
+
+on:
+  push:
+    branches:
+      - develop
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout 
+        uses: actions/checkout@v3
+      - name: setup node 16.x 
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          ## this setup is for node_modules caching 
+          ## see more at https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#caching-packages-data
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+      # cache globally, not only node_modules
+      # so we need to run this extra step to see if any missing modules
+      - name: install missing modules if any 
+        run: npm ci # add `--omit=dev` in case of release
+      - name: ✅ Lint
+        run: npm run lint
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout 
+        uses: actions/checkout@v3
+      - name: setup node 16.x 
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          ## this setup is for node_modules caching 
+          ## see more at https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#caching-packages-data
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+      # cache globally, not only node_modules
+      # so we need to run this extra step to see if any missing modules
+      - name: install missing modules if any 
+        run: npm ci # add `--omit=dev` in case of release
+      - name: ✅ Cypress Tests run
+        uses: cypress-io/github-action@v5.0.2 # use the explicit version number
+        with:
+          build: npm run build
+          start: npm start
+  build_image:
+    name: build and push image to github registry
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - name: checkout 
+        uses: actions/checkout@v3
+      - name: setup node 16.x 
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          ## this setup is for node_modules caching 
+          ## see more at https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#caching-packages-data
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }} # can be ${{ secrets.REGISTRY_USER }} either 
+          password: ${{ secrets.GITHUB_TOKEN }} # can use personal access token ${{ secrets.REGISTRY_ACCESS_TOKEN }} here
+      - name: Build and push the Docker image
+        uses: docker/build-push-action@v3
+        with:
+          # more variables at https://github.com/docker/build-push-action#inputs
+          context: .
+          # file: ./Dockerfile
+          target: release
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/simi:latest-dev
+            ghcr.io/${{ github.repository_owner }}/simi:${{ github.sha }}-dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build_image]
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v3
+      - name: Helm Deploy
+        uses: crazyfree/helm-deploy-githhub-action@v1.0.4
+        with:
+          # more options here https://github.com/marketplace/actions/helm-deploy
+          helm: helm3
+          release: 'simi'
+          namespace: 'simi-staging'
+          chart: './charts/simi_charts'
+          version: ${{ github.sha }}-dev
+          token: ${{ github.token }}
+          sets: "imageCredentials.username=${{ github.repository_owner }},imageCredentials.password=${{ secrets.GITHUB_TOKEN }},image.tag=${{ github.sha }}-dev,ingress.className=traefik"
+        env:
+          KUBECONFIG_FILE: ${{ secrets.RUNNER_KUBECONFIG }}

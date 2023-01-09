@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  frontend:
+    build:
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - 3000:3000
+    # allows for hot-reloading of server
+    volumes:
+      - ./components:/usr/src/app/components
+      - ./pages:/usr/src/app/pages
+      - ./public:/usr/src/app/public
+      - ./styles:/usr/src/app/styles
+      - ./cypress:/usr/src/app/cypress
+      - ./package.json:/usr/src/app/package.json

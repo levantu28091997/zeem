@@ -1,0 +1,26 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "no-console": 0,
+    "no-undef": 0,
+    "space-before-function-paren": 0,
+    "indent": [
+        "error",
+        4
+    ],
+    "linebreak-style": [
+        "error",
+        "unix"
+    ],
+    "quotes": [
+        "error",
+        "single"
+    ],
+    "semi": [
+        "error",
+        "never"
+    ],
+    // we want to avoid useless spaces
+    "no-multi-spaces": ["error"]
+  }
+}

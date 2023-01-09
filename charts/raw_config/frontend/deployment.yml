@@ -1,0 +1,25 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  labels:
+    app: simi
+spec: # for replicaset
+  replicas: 1
+  selector: 
+    matchLabels:
+      app: simi
+  template: 
+    metadata:
+      labels:
+        app: simi
+    spec: # for pod
+      containers:
+      - name: simi
+        image: simi:latest-dev # get from github/gitlab/ERC... registry. Can we build from local registry, using Dockerfile instead?
+        imagePullPolicy: Never # local registry
+        ports:
+          - name: http
+            containerPort: 3000
+            protocol: TCP

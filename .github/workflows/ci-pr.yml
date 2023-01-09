@@ -1,0 +1,49 @@
+name: CI - PR
+
+on:
+  pull_request:
+    branches:
+      - master
+      - develop
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout 
+        uses: actions/checkout@v3
+      - name: setup node 16.x 
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          ## this setup is for node_modules caching 
+          ## see more at https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#caching-packages-data
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+      # cache globally, not only node_modules
+      # so we need to run this extra step to see if any missing modules
+      - name: install missing modules if any 
+        run: npm ci # add `--omit=dev` in case of release
+      - name: ✅ Lint
+        run: npm run lint
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout 
+        uses: actions/checkout@v3
+      - name: setup node 16.x 
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          ## this setup is for node_modules caching 
+          ## see more at https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#caching-packages-data
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+      # cache globally, not only node_modules
+      # so we need to run this extra step to see if any missing modules
+      - name: install missing modules if any 
+        run: npm ci # add `--omit=dev` in case of release
+      - name: ✅ Cypress Tests run
+        uses: cypress-io/github-action@v5.0.2 # use the explicit version number
+        with:
+          build: npm run build
+          start: npm start
